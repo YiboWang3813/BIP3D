@@ -50,7 +50,13 @@ coverage.xml
 *.cover
 .hypothesis/
 .pytest_cache/
+
+# Local experiment and scheduler outputs
 slurm-*.out
+slurm-*.err
+/logs/
+/work-dir/
+/work_dirs/
 
 # Translations
 *.mo
