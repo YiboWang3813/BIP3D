@@ -95,6 +95,17 @@ python tools/sample_sparse_protocol.py \
 ```
 The info pickle must come from the official trusted annotation archive. Remove
 `--max-scenes` and repeat the export per source dataset for a full run.
+Generate full protocols on `cpu1`, not on the login node:
+```bash
+SPARSE_SOURCE_DATASET=matterport3d \
+SPARSE_TRAJECTORY=local \
+sbatch scripts/slurm/sparse_protocol_generation.sbatch
+```
+The Slurm script uses the standard `0.65 m / 35 degree` camera-graph limits.
+For Matterport3D local protocols it uses `0.8 m / 90 degree`, because its
+frames are discrete panorama directions rather than adjacent video frames.
+The resolved limits and aggregated failure reasons are recorded in
+`generation_summary.json`.
 
 ### Prepare pre-trained weights
 Download the required Grounding-DINO pre-trained weights: [Swin-Tiny](https://download.openmmlab.com/mmdetection/v3.0/grounding_dino/groundingdino_swint_ogc_mmdet-822d7e9d.pth) and [Swin-Base](https://download.openmmlab.com/mmdetection/v3.0/grounding_dino/groundingdino_swinb_cogcoor_mmdet-55949c9c.pth).

@@ -123,6 +123,21 @@ class ProtocolGenerationTest(unittest.TestCase):
             self.assertEqual(summary["success_count"], 1)
             self.assertEqual(summary["failure_count"], 1)
             self.assertEqual(summary["results"][1]["status"], "failed")
+            self.assertEqual(
+                summary["camera_graph"],
+                {
+                    "max_translation_m": 0.6,
+                    "max_rotation_deg": 1,
+                },
+            )
+            self.assertEqual(
+                summary["failure_reasons"],
+                {"no connected component can provide 8 views": 1},
+            )
+            self.assertEqual(
+                summary["results"][1]["largest_connected_component_size"],
+                2,
+            )
 
     def test_cli_writes_summary_and_returns_failure_status(self):
         with TemporaryDirectory() as directory:
@@ -144,6 +159,34 @@ class ProtocolGenerationTest(unittest.TestCase):
             )
 
             self.assertEqual(return_code, 1)
+            summary = json.loads(
+                (output_dir / "generation_summary.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(summary["failure_count"], 1)
+
+    def test_cli_can_allow_recorded_scene_failures(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_path = root / "poses.json"
+            output_dir = root / "protocols"
+            input_path.write_text(
+                json.dumps(manifest_dict(scene_sizes=(2,))),
+                encoding="utf-8",
+            )
+
+            return_code = main(
+                [
+                    "--input",
+                    str(input_path),
+                    "--output-dir",
+                    str(output_dir),
+                    "--allow-scene-failures",
+                ]
+            )
+
+            self.assertEqual(return_code, 0)
             summary = json.loads(
                 (output_dir / "generation_summary.json").read_text(
                     encoding="utf-8"

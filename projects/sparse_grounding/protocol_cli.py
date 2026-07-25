@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -52,6 +53,7 @@ def generate_protocols(
     results = []
     for scene in manifest.scenes:
         output_path = output_dir / f"{scene.scene_id}.json"
+        graph = None
         try:
             graph = build_camera_graph(
                 scene.poses,
@@ -73,13 +75,22 @@ def generate_protocols(
                 overwrite=overwrite,
             )
         except (SamplingError, ValueError) as error:
-            results.append(
-                {
-                    "scene_id": scene.scene_id,
-                    "status": "failed",
-                    "error": str(error),
-                }
-            )
+            failure = {
+                "scene_id": scene.scene_id,
+                "status": "failed",
+                "error": str(error),
+            }
+            if graph is not None:
+                component_sizes = sorted(
+                    (len(component) for component in graph.connected_components()),
+                    reverse=True,
+                )
+                failure["graph_node_count"] = len(graph.nodes)
+                failure["graph_edge_count"] = len(graph.edges)
+                failure["largest_connected_component_size"] = (
+                    component_sizes[0] if component_sizes else 0
+                )
+            results.append(failure)
         else:
             results.append(
                 {
@@ -92,15 +103,25 @@ def generate_protocols(
     failure_count = sum(
         result["status"] == "failed" for result in results
     )
+    failure_reasons = Counter(
+        result["error"]
+        for result in results
+        if result["status"] == "failed"
+    )
     return {
         "dataset": manifest.dataset,
         "trajectory_type": trajectory_type,
         "protocol_version": protocol_version,
         "global_seed": global_seed,
         "budgets": list(budgets),
+        "camera_graph": {
+            "max_translation_m": max_translation_m,
+            "max_rotation_deg": max_rotation_deg,
+        },
         "scene_count": len(results),
         "success_count": len(results) - failure_count,
         "failure_count": failure_count,
+        "failure_reasons": dict(sorted(failure_reasons.items())),
         "results": results,
     }
 
@@ -120,6 +141,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-translation-m", type=float, default=0.65)
     parser.add_argument("--max-rotation-deg", type=float, default=35.0)
     parser.add_argument("--overwrite", action="store_true")
+    parser.add_argument(
+        "--allow-scene-failures",
+        action="store_true",
+        help="return success after recording scenes that cannot meet the budgets",
+    )
     return parser
 
 
@@ -148,4 +174,8 @@ def main(argv: list[str] | None = None) -> int:
         f"{serialized}\n",
     )
     print(serialized)
-    return 1 if summary["failure_count"] else 0
+    return (
+        1
+        if summary["failure_count"] and not args.allow_scene_failures
+        else 0
+    )
