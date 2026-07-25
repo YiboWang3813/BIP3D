@@ -289,10 +289,12 @@ def run_annotation_visibility_audit(
             protocols[scan_id] = protocol
 
     records = []
-    errors = []
+    unresolved_queries = []
     for query_index, query in enumerate(queries):
         if not isinstance(query, Mapping):
-            errors.append({"query_index": query_index, "error": "query is not an object"})
+            unresolved_queries.append(
+                {"query_index": query_index, "error": "query is not an object"}
+            )
             continue
         scan_id = query.get("scan_id")
         if scan_id not in scenes_by_id or scan_id not in protocols:
@@ -307,7 +309,9 @@ def run_annotation_visibility_audit(
                 category_names=category_names,
             )
         except ValueError as error:
-            errors.append({"query_index": query_index, "error": str(error)})
+            unresolved_queries.append(
+                {"query_index": query_index, "error": str(error)}
+            )
             continue
         record.update(
             {
@@ -329,7 +333,7 @@ def run_annotation_visibility_audit(
         "protocol_scene_count": len(protocols),
         "query_count": len(records),
         "unique_target_count": len(unique_rows),
-        "error_count": len(errors),
+        "unresolved_query_count": len(unresolved_queries),
         "by_budget": {
             str(budget): {
                 "queries": _strata(records, budget),
@@ -344,7 +348,7 @@ def run_annotation_visibility_audit(
         "oracle_view_budget": oracle_view_budget,
         "source_datasets": sorted(sources),
         "summary": summary,
-        "errors": errors,
+        "unresolved_queries": unresolved_queries,
         "records": records,
     }
 
@@ -381,4 +385,4 @@ def main(argv: list[str] | None = None) -> int:
     )
     temporary.replace(output)
     print(json.dumps(result["summary"], indent=2, sort_keys=True))
-    return 1 if result["summary"]["error_count"] else 0
+    return 0

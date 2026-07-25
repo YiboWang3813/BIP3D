@@ -148,7 +148,7 @@ class AnnotationAuditTest(unittest.TestCase):
         target_metrics = result["summary"]["by_budget"]["3"]["unique_targets"]["overall"]
         self.assertEqual(query_metrics["sparse_supported_count"], 2)
         self.assertEqual(target_metrics["sparse_supported_count"], 1)
-        self.assertEqual(result["summary"]["error_count"], 0)
+        self.assertEqual(result["summary"]["unresolved_query_count"], 0)
 
 
 if __name__ == "__main__":
