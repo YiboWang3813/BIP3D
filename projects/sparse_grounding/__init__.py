@@ -1,5 +1,6 @@
 """Sparse-view 3D grounding experiment utilities."""
 
+from .geometry import CameraIntrinsics, CameraPose
 from .protocol import (
     CameraGraphStats,
     SparseSceneProtocol,
@@ -7,6 +8,8 @@ from .protocol import (
 )
 
 __all__ = [
+    "CameraIntrinsics",
+    "CameraPose",
     "CameraGraphStats",
     "SparseSceneProtocol",
     "ViewSelection",
