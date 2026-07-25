@@ -80,6 +80,22 @@ python tools/check_sparse_grounding_data.py \
 Only use `--inspect-pickle` with the official annotation files you trust. Use
 `--vg-profile mini` when the config selects `data_version="v1-mini"`.
 
+Export a small pose manifest and generate sparse-view protocols:
+```bash
+python tools/export_embodiedscan_poses.py \
+    --info-file data/embodiedscan/embodiedscan_infos_val.pkl \
+    --output work_dirs/sparse_grounding/val_poses.json \
+    --source-dataset scannet \
+    --max-scenes 3
+
+python tools/sample_sparse_protocol.py \
+    --input work_dirs/sparse_grounding/val_poses.json \
+    --output-dir work_dirs/sparse_grounding/protocols \
+    --trajectory-type local_connected
+```
+The info pickle must come from the official trusted annotation archive. Remove
+`--max-scenes` and repeat the export per source dataset for a full run.
+
 ### Prepare pre-trained weights
 Download the required Grounding-DINO pre-trained weights: [Swin-Tiny](https://download.openmmlab.com/mmdetection/v3.0/grounding_dino/groundingdino_swint_ogc_mmdet-822d7e9d.pth) and [Swin-Base](https://download.openmmlab.com/mmdetection/v3.0/grounding_dino/groundingdino_swinb_cogcoor_mmdet-55949c9c.pth).
 ```bash

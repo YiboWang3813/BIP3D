@@ -144,3 +144,33 @@ class PoseManifest:
         if not isinstance(decoded, Mapping):
             raise ValueError("pose manifest root must be an object")
         return cls.from_dict(decoded)
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "dataset": self.dataset,
+            "pose_convention": self.pose_convention,
+            "scenes": [
+                {
+                    "scene_id": scene.scene_id,
+                    "frames": [
+                        {
+                            "frame_id": frame.frame_id,
+                            "transform": frame.pose.camera_to_world.tolist(),
+                        }
+                        for frame in scene.frames
+                    ],
+                }
+                for scene in self.scenes
+            ],
+        }
+
+    def to_json(self, *, indent: int = 2) -> str:
+        return json.dumps(
+            self.to_dict(),
+            indent=indent,
+            sort_keys=True,
+            ensure_ascii=True,
+        )
+
+    def dump(self, path: Path) -> None:
+        path.write_text(f"{self.to_json()}\n", encoding="utf-8")

@@ -44,6 +44,14 @@ def manifest_dict(scene_sizes=(10,), convention="camera_to_world"):
 
 
 class PoseManifestTest(unittest.TestCase):
+    def test_json_round_trip_is_stable(self):
+        manifest = PoseManifest.from_dict(manifest_dict())
+
+        self.assertEqual(
+            PoseManifest.from_dict(manifest.to_dict()).to_json(),
+            manifest.to_json(),
+        )
+
     def test_world_to_camera_is_converted(self):
         value = manifest_dict(scene_sizes=(1,), convention="world_to_camera")
         value["scenes"][0]["frames"][0]["transform"] = transform_at(-2)
