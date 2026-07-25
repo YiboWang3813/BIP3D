@@ -38,17 +38,35 @@ class Sparse3RScanConfigTest(unittest.TestCase):
             dataset.ann_file,
             "embodiedscan/embodiedscan_infos_val.pkl",
         )
-        self.assertEqual(config.test_evaluator.type, "GroundingMetric")
+        self.assertEqual(config.test_evaluator.type, "SparseGroundingMetric")
         self.assertFalse(config.test_evaluator.get("format_only", False))
 
-    def test_custom_dataset_import_is_required(self):
+    def test_custom_dataset_and_metric_imports_are_required(self):
         config = self.Config.fromfile(
             REPO_ROOT / "configs/sparse_grounding_3rscan.py"
         )
 
         self.assertEqual(
             config.custom_imports.imports,
-            ["projects.sparse_grounding.protocol_dataset"],
+            [
+                "projects.sparse_grounding.protocol_dataset",
+                "projects.sparse_grounding.query_metrics",
+            ],
+        )
+
+    def test_query_result_path_comes_from_environment(self):
+        with patch.dict(
+            os.environ,
+            {"SPARSE_QUERY_RESULT_FILE": "/results/per-query.json"},
+            clear=False,
+        ):
+            config = self.Config.fromfile(
+                REPO_ROOT / "configs/sparse_grounding_3rscan.py"
+            )
+
+        self.assertEqual(
+            config.test_evaluator.query_result_file,
+            "/results/per-query.json",
         )
 
 

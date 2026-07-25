@@ -150,6 +150,16 @@ def run_smoke(args: argparse.Namespace) -> dict[str, Any]:
     if selected_frames != manifest.get("frame_ids"):
         raise ValueError("pipeline frame order differs from fixture manifest")
 
+    eval_ann_info = sample["data_samples"].eval_ann_info
+    query_id = eval_ann_info.get("sparse_query_id")
+    query_index = eval_ann_info.get("sparse_query_index")
+    if not isinstance(query_id, str) or not query_id:
+        raise ValueError("pipeline evaluation annotation has no stable query ID")
+    if query_index != 0 or not query_id.endswith(":0"):
+        raise ValueError(
+            f"unexpected fixture query identity: {query_id!r}, {query_index!r}"
+        )
+
     device_name = (
         torch.cuda.get_device_name(device)
         if device.type == "cuda"
@@ -161,6 +171,7 @@ def run_smoke(args: argparse.Namespace) -> dict[str, Any]:
         "verified_files": len(manifest["files"]),
         "scan_id": scan_id,
         "query_count": len(dataset),
+        "query_id": query_id,
         "frame_ids": selected_frames,
         "image": {
             "shape": list(image.shape),

@@ -37,6 +37,7 @@ class ProtocolSelectionTest(unittest.TestCase):
     def setUpClass(cls):
         try:
             from projects.sparse_grounding.protocol_dataset import (
+                identify_sparse_query,
                 load_protocol_frame_ids,
                 protocol_path,
                 select_scene_frames,
@@ -46,11 +47,27 @@ class ProtocolSelectionTest(unittest.TestCase):
         cls.load_protocol_frame_ids = staticmethod(load_protocol_frame_ids)
         cls.protocol_path = staticmethod(protocol_path)
         cls.select_scene_frames = staticmethod(select_scene_frames)
+        cls.identify_sparse_query = staticmethod(identify_sparse_query)
 
     def test_protocol_path_encodes_scan_id(self):
         path = self.protocol_path(Path("/protocols"), "3rscan/scene")
 
         self.assertEqual(path.name, "3rscan%2Fscene.json")
+
+    def test_query_identity_is_stable_and_does_not_mutate_source(self):
+        query = {"scan_id": "3rscan/scene", "target_id": 4}
+
+        identified = self.identify_sparse_query(
+            query,
+            filename="embodiedscan_val_vg_all.json",
+            query_index=12,
+        )
+
+        self.assertEqual(
+            identified["sparse_query_id"],
+            "embodiedscan_val_vg_all.json:12",
+        )
+        self.assertNotIn("sparse_query_id", query)
 
     def test_loads_exact_budget_and_validates_metadata(self):
         with TemporaryDirectory() as directory:

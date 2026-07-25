@@ -21,6 +21,28 @@ def protocol_path(protocol_dir: Path, scan_id: str) -> Path:
     return protocol_dir / f"{quote(scan_id, safe='')}.json"
 
 
+def identify_sparse_query(
+    query: dict[str, Any],
+    *,
+    filename: str,
+    query_index: int,
+) -> dict[str, Any]:
+    """Copy a query and attach a stable source-file identity."""
+    if not isinstance(filename, str) or not filename:
+        raise ValueError("filename must be a non-empty string")
+    if (
+        isinstance(query_index, bool)
+        or not isinstance(query_index, int)
+        or query_index < 0
+    ):
+        raise ValueError("query_index must be a nonnegative integer")
+    identified = copy.deepcopy(query)
+    identified["sparse_query_file"] = filename
+    identified["sparse_query_index"] = query_index
+    identified["sparse_query_id"] = f"{filename}:{query_index}"
+    return identified
+
+
 def load_protocol_frame_ids(
     path: Path,
     *,
@@ -171,7 +193,16 @@ class SparseProtocolGroundingDataset(EmbodiedScanDetGroundingDataset):
             loaded = load(os.path.join(self.data_root, filename))
             if not isinstance(loaded, list):
                 raise ValueError(f"grounding annotation must be a list: {filename}")
-            language_annotations.extend(loaded)
+            for query_index, item in enumerate(loaded):
+                if not isinstance(item, dict):
+                    continue
+                language_annotations.append(
+                    identify_sparse_query(
+                        item,
+                        filename=filename,
+                        query_index=query_index,
+                    )
+                )
 
         known_scan_ids = set(self.scan_ids)
         language_annotations = [
@@ -221,7 +252,21 @@ class SparseProtocolGroundingDataset(EmbodiedScanDetGroundingDataset):
             self.scan_id_to_data_idx[item["scan_id"]].append(index)
 
     def get_data_info_grounding(self, data_info):
+        query_metadata = {
+            key: copy.deepcopy(data_info.get(key))
+            for key in (
+                "sparse_query_file",
+                "sparse_query_index",
+                "sparse_query_id",
+                "target_id",
+                "target",
+                "text",
+            )
+        }
         scene = super().get_data_info_grounding(data_info)
+        eval_ann_info = scene.get("eval_ann_info")
+        if isinstance(eval_ann_info, dict):
+            eval_ann_info.update(query_metadata)
         scan_id = scene["scan_id"]
         return select_scene_frames(
             scene,

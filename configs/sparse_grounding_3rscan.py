@@ -6,7 +6,10 @@ import os
 
 
 custom_imports = dict(
-    imports=["projects.sparse_grounding.protocol_dataset"],
+    imports=[
+        "projects.sparse_grounding.protocol_dataset",
+        "projects.sparse_grounding.query_metrics",
+    ],
     allow_failed_imports=False,
 )
 
@@ -19,6 +22,7 @@ trajectory_type = os.environ.get(
     "SPARSE_TRAJECTORY_TYPE",
     "global_fps",
 )
+query_result_file = os.environ.get("SPARSE_QUERY_RESULT_FILE")
 
 sparse_dataset = dict(
     type="SparseProtocolGroundingDataset",
@@ -41,8 +45,9 @@ test_dataloader = dict(
 )
 test_evaluator = dict(
     _delete_=True,
-    type="GroundingMetric",
+    type="SparseGroundingMetric",
     collect_dir=None,
+    query_result_file=query_result_file,
 )
 
 work_dir = os.path.join(
