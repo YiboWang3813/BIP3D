@@ -12,6 +12,14 @@ from .protocol import (
     SparseSceneProtocol,
     ViewSelection,
 )
+from .sampling import (
+    SamplingError,
+    build_heldout_pool,
+    derive_scene_seed,
+    sample_global_fps,
+    sample_local_connected,
+    sample_scene_protocol,
+)
 
 __all__ = [
     "CameraEdge",
@@ -21,6 +29,12 @@ __all__ = [
     "CameraPose",
     "CameraGraphStats",
     "SparseSceneProtocol",
+    "SamplingError",
     "ViewSelection",
+    "build_heldout_pool",
     "build_camera_graph",
+    "derive_scene_seed",
+    "sample_global_fps",
+    "sample_local_connected",
+    "sample_scene_protocol",
 ]
