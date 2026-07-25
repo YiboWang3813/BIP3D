@@ -39,6 +39,7 @@ class ProtocolSelectionTest(unittest.TestCase):
             from projects.sparse_grounding.protocol_dataset import (
                 identify_sparse_query,
                 load_protocol_frame_ids,
+                oracle_augmented_frame_ids,
                 protocol_path,
                 select_scene_frames,
             )
@@ -48,6 +49,9 @@ class ProtocolSelectionTest(unittest.TestCase):
         cls.protocol_path = staticmethod(protocol_path)
         cls.select_scene_frames = staticmethod(select_scene_frames)
         cls.identify_sparse_query = staticmethod(identify_sparse_query)
+        cls.oracle_augmented_frame_ids = staticmethod(
+            oracle_augmented_frame_ids
+        )
 
     def test_protocol_path_encodes_scan_id(self):
         path = self.protocol_path(Path("/protocols"), "3rscan/scene")
@@ -95,6 +99,35 @@ class ProtocolSelectionTest(unittest.TestCase):
                     budget=2,
                     expected_trajectory_type="local_connected",
                 )
+
+    def test_oracle_frames_must_come_from_heldout_pool(self):
+        from projects.sparse_grounding.oracle_manifest import (
+            OracleQuerySelection,
+        )
+
+        valid = OracleQuerySelection(
+            query_id="vg.json:0",
+            scan_id="3rscan/scene",
+            frame_ids=("frame-1.jpg",),
+        )
+        selected = self.oracle_augmented_frame_ids(
+            make_protocol(),
+            valid,
+            base_view_budget=1,
+        )
+        self.assertEqual(selected, ("frame-2.jpg", "frame-1.jpg"))
+
+        invalid = OracleQuerySelection(
+            query_id="vg.json:0",
+            scan_id="3rscan/scene",
+            frame_ids=("frame-0.jpg",),
+        )
+        with self.assertRaisesRegex(ValueError, "held-out pool"):
+            self.oracle_augmented_frame_ids(
+                make_protocol(),
+                invalid,
+                base_view_budget=1,
+            )
 
     def test_selects_all_aligned_multiview_fields_in_protocol_order(self):
         scene = {

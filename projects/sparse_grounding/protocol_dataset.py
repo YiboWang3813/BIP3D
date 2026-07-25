@@ -13,6 +13,10 @@ from mmengine.fileio import load
 from bip3d.datasets import EmbodiedScanDetGroundingDataset
 from bip3d.registry import DATASETS
 
+from .oracle_manifest import (
+    OracleQuerySelection,
+    RealViewOracleManifest,
+)
 from .protocol import SparseSceneProtocol
 
 
@@ -80,6 +84,42 @@ def load_protocol_frame_ids(
     if selection is None:
         raise ValueError(f"{path}: protocol has no budget {budget}")
     return selection.frame_ids
+
+
+def oracle_augmented_frame_ids(
+    protocol: SparseSceneProtocol,
+    oracle_selection: OracleQuerySelection,
+    *,
+    base_view_budget: int,
+) -> tuple[str, ...]:
+    """Validate and append query-level held-out frames to sparse inputs."""
+    base_frame_ids = next(
+        (
+            selection.frame_ids
+            for selection in protocol.selections
+            if selection.budget == base_view_budget
+        ),
+        None,
+    )
+    if base_frame_ids is None:
+        raise ValueError(
+            f"protocol has no base budget {base_view_budget}"
+        )
+    if quote(oracle_selection.scan_id, safe="") != protocol.scene_id:
+        raise ValueError(
+            "oracle selection scan_id does not match encoded protocol scene"
+        )
+    heldout = set(protocol.candidate_heldout_frame_ids)
+    invalid = [
+        frame_id
+        for frame_id in oracle_selection.frame_ids
+        if frame_id not in heldout
+    ]
+    if invalid:
+        raise ValueError(
+            f"oracle frames are not in the held-out pool: {invalid[:3]}"
+        )
+    return (*base_frame_ids, *oracle_selection.frame_ids)
 
 
 def select_scene_frames(
@@ -183,6 +223,7 @@ class SparseProtocolGroundingDataset(EmbodiedScanDetGroundingDataset):
         self.expected_trajectory_type = expected_trajectory_type
         self.expected_protocol_version = expected_protocol_version
         self.protocol_frame_ids: dict[str, tuple[str, ...]] = {}
+        self.protocols: dict[str, SparseSceneProtocol] = {}
         super().__init__(*args, **kwargs)
 
     def load_language_data(self):
@@ -226,6 +267,8 @@ class SparseProtocolGroundingDataset(EmbodiedScanDetGroundingDataset):
                 if self.missing_protocol == "error":
                     raise FileNotFoundError(f"missing sparse protocol: {path}")
                 continue
+            protocol = SparseSceneProtocol.load(path)
+            self.protocols[scan_id] = protocol
             self.protocol_frame_ids[scan_id] = load_protocol_frame_ids(
                 path,
                 budget=self.view_budget,
@@ -251,6 +294,9 @@ class SparseProtocolGroundingDataset(EmbodiedScanDetGroundingDataset):
         for index, item in enumerate(self.data_list):
             self.scan_id_to_data_idx[item["scan_id"]].append(index)
 
+    def selected_frame_ids(self, data_info: dict[str, Any]) -> tuple[str, ...]:
+        return self.protocol_frame_ids[data_info["scan_id"]]
+
     def get_data_info_grounding(self, data_info):
         query_metadata = {
             key: copy.deepcopy(data_info.get(key))
@@ -270,5 +316,78 @@ class SparseProtocolGroundingDataset(EmbodiedScanDetGroundingDataset):
         scan_id = scene["scan_id"]
         return select_scene_frames(
             scene,
-            self.protocol_frame_ids[scan_id],
+            self.selected_frame_ids(data_info),
+        )
+
+
+@DATASETS.register_module()
+class OracleProtocolGroundingDataset(SparseProtocolGroundingDataset):
+    """Sparse grounding dataset augmented by validated held-out real views."""
+
+    def __init__(
+        self,
+        *args,
+        oracle_manifest: str,
+        expected_oracle_policy: str | None = None,
+        missing_oracle: str = "error",
+        **kwargs,
+    ):
+        if missing_oracle not in {"error", "skip"}:
+            raise ValueError("missing_oracle must be 'error' or 'skip'")
+        self.oracle_manifest = RealViewOracleManifest.load(
+            Path(oracle_manifest)
+        )
+        if (
+            expected_oracle_policy is not None
+            and self.oracle_manifest.policy != expected_oracle_policy
+        ):
+            raise ValueError(
+                "oracle manifest policy mismatch: "
+                f"expected {expected_oracle_policy!r}, "
+                f"got {self.oracle_manifest.policy!r}"
+            )
+        self.missing_oracle = missing_oracle
+        super().__init__(*args, **kwargs)
+
+    def load_language_data(self):
+        super().load_language_data()
+        if self.oracle_manifest.base_view_budget != self.view_budget:
+            raise ValueError(
+                "oracle manifest base_view_budget does not match dataset"
+            )
+        expected_trajectory = self.expected_trajectory_type
+        if (
+            expected_trajectory is not None
+            and self.oracle_manifest.trajectory_type != expected_trajectory
+        ):
+            raise ValueError(
+                "oracle manifest trajectory_type does not match dataset"
+            )
+
+        available = self.oracle_manifest.records_by_query_id
+        missing = [
+            item["sparse_query_id"]
+            for item in self.data_list
+            if item["sparse_query_id"] not in available
+        ]
+        if missing and self.missing_oracle == "error":
+            raise ValueError(
+                f"oracle manifest is missing {len(missing)} queries: "
+                f"{missing[:3]}"
+            )
+        if self.missing_oracle == "skip":
+            self.data_list = [
+                item
+                for item in self.data_list
+                if item["sparse_query_id"] in available
+            ]
+
+    def selected_frame_ids(self, data_info: dict[str, Any]) -> tuple[str, ...]:
+        query_id = data_info["sparse_query_id"]
+        oracle_selection = self.oracle_manifest.records_by_query_id[query_id]
+        scan_id = data_info["scan_id"]
+        return oracle_augmented_frame_ids(
+            self.protocols[scan_id],
+            oracle_selection,
+            base_view_budget=self.view_budget,
         )
