@@ -10,6 +10,8 @@ develop-eggs/
 dist/
 downloads/
 /data/
+/anchor_files/
+/ckpt/
 eggs/
 .eggs/
 lib/
