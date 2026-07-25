@@ -71,7 +71,7 @@ def _selection(
     raise ValueError(f"protocol has no budget {budget}")
 
 
-def _target_visibility(
+def target_visibility(
     scene: Mapping[str, Any],
     target_id: int,
     target_name: str,
@@ -132,7 +132,7 @@ def evaluate_query_visibility(
     ):
         raise ValueError("query text and distractor_ids are invalid")
 
-    visible_frames, instance_index = _target_visibility(
+    visible_frames, instance_index = target_visibility(
         scene,
         target_id,
         target_name,
