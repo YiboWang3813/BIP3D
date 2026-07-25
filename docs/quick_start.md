@@ -1,6 +1,13 @@
 # Quick Start
 
 ### Set up python environment
+On the target Slurm cluster, the pinned environment can be created and the
+custom CUDA operation compiled with:
+```bash
+bash scripts/setup_bip3d_env.sh bip3d
+```
+
+For a manual installation:
 ```bash
 virtualenv mm_bip3d --python=python3.8
 source mm_bip3d/bin/activate
@@ -22,6 +29,16 @@ cd bip3d/ops
 python3 setup.py develop
 cd ../../
 ```
+
+### Validate on a Slurm GPU node
+The login node does not need to expose a GPU. After creating the `bip3d`
+Conda environment and compiling the custom operation, validate the complete
+runtime on one GPU:
+```bash
+sbatch scripts/slurm/bip3d_smoke.sbatch
+```
+Set `BIP3D_CONDA_ENV` before submission when the environment has a different
+name, or set `BIP3D_PYTHON` to the environment's Python executable.
 
 ### Prepare the data
 Download the [EmbodiedScan dataset](https://github.com/OpenRobotLab/EmbodiedScan) and create symbolic links.
