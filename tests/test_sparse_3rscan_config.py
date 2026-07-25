@@ -55,11 +55,13 @@ class Sparse3RScanConfigTest(unittest.TestCase):
         )
 
     def test_query_result_path_comes_from_environment(self):
-        with patch.dict(
-            os.environ,
-            {"SPARSE_QUERY_RESULT_FILE": "/results/per-query.json"},
-            clear=False,
-        ):
+        environment = {
+            "SPARSE_QUERY_RESULT_FILE": "/results/per-query.json",
+            "BIP3D_BERT_PATH": "/models/bert",
+            "BIP3D_ANCHOR_PATH": "/models/anchors.npy",
+            "BIP3D_DATA_ROOT": "/datasets/fixture",
+        }
+        with patch.dict(os.environ, environment, clear=False):
             config = self.Config.fromfile(
                 REPO_ROOT / "configs/sparse_grounding_3rscan.py"
             )
@@ -67,6 +69,15 @@ class Sparse3RScanConfigTest(unittest.TestCase):
         self.assertEqual(
             config.test_evaluator.query_result_file,
             "/results/per-query.json",
+        )
+        self.assertEqual(config.model.text_encoder.name, "/models/bert")
+        self.assertEqual(
+            config.model.decoder.instance_bank.anchor,
+            "/models/anchors.npy",
+        )
+        self.assertEqual(
+            config.test_dataloader.dataset.data_root,
+            "/datasets/fixture",
         )
 
 

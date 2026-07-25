@@ -23,9 +23,24 @@ trajectory_type = os.environ.get(
     "global_fps",
 )
 query_result_file = os.environ.get("SPARSE_QUERY_RESULT_FILE")
+bert_path = os.environ.get(
+    "BIP3D_BERT_PATH",
+    "./ckpt/bert-base-uncased",
+)
+anchor_path = os.environ.get(
+    "BIP3D_ANCHOR_PATH",
+    "anchor_files/embodiedscan_kmeans.npy",
+)
+data_root = os.environ.get("BIP3D_DATA_ROOT", "data")
+
+model = dict(
+    text_encoder=dict(name=bert_path),
+    decoder=dict(instance_bank=dict(anchor=anchor_path)),
+)
 
 sparse_dataset = dict(
     type="SparseProtocolGroundingDataset",
+    data_root=data_root,
     part=["3rscan"],
     protocol_dir=protocol_dir,
     view_budget=view_budget,
