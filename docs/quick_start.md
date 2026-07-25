@@ -9,7 +9,11 @@ pip3 install --upgrade pip
 bip3d_path="path/to/bip3d"
 cd ${bip3d_path}
 # MMCV recommends installing via a wheel package, url: https://download.openmmlab.com/mmcv/dist/cu{$cuda_version}/torch{$torch_version}/index.html
-pip3 install -r requirement.txt
+pip3 install -r requirements.txt
+
+# Verify Python and pinned package versions. Add --require-cuda on the GPU
+# build node before compiling the custom CUDA operation.
+python3 tools/check_environment.py
 ```
 
 ### Compile the deformable_aggregation CUDA op
