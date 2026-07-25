@@ -297,6 +297,18 @@ class SparseProtocolGroundingDataset(EmbodiedScanDetGroundingDataset):
     def selected_frame_ids(self, data_info: dict[str, Any]) -> tuple[str, ...]:
         return self.protocol_frame_ids[data_info["scan_id"]]
 
+    def evaluation_view_metadata(
+        self,
+        data_info: dict[str, Any],
+        frame_ids: tuple[str, ...],
+    ) -> dict[str, Any]:
+        protocol = self.protocols[data_info["scan_id"]]
+        return {
+            "selected_frame_ids": list(frame_ids),
+            "base_view_budget": self.view_budget,
+            "trajectory_type": protocol.trajectory_type,
+        }
+
     def get_data_info_grounding(self, data_info):
         query_metadata = {
             key: copy.deepcopy(data_info.get(key))
@@ -314,10 +326,17 @@ class SparseProtocolGroundingDataset(EmbodiedScanDetGroundingDataset):
         if isinstance(eval_ann_info, dict):
             eval_ann_info.update(query_metadata)
         scan_id = scene["scan_id"]
-        return select_scene_frames(
+        frame_ids = self.selected_frame_ids(data_info)
+        selected = select_scene_frames(
             scene,
-            self.selected_frame_ids(data_info),
+            frame_ids,
         )
+        eval_ann_info = selected.get("eval_ann_info")
+        if isinstance(eval_ann_info, dict):
+            eval_ann_info.update(
+                self.evaluation_view_metadata(data_info, frame_ids)
+            )
+        return selected
 
 
 @DATASETS.register_module()
@@ -391,3 +410,18 @@ class OracleProtocolGroundingDataset(SparseProtocolGroundingDataset):
             oracle_selection,
             base_view_budget=self.view_budget,
         )
+
+    def evaluation_view_metadata(
+        self,
+        data_info: dict[str, Any],
+        frame_ids: tuple[str, ...],
+    ) -> dict[str, Any]:
+        metadata = super().evaluation_view_metadata(data_info, frame_ids)
+        metadata.update(
+            {
+                "oracle_policy": self.oracle_manifest.policy,
+                "oracle_view_budget": self.oracle_manifest.oracle_view_budget,
+                "oracle_frame_ids": list(frame_ids[self.view_budget :]),
+            }
+        )
+        return metadata

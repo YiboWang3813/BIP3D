@@ -73,6 +73,12 @@ def build_query_record(
         "target_id": annotation.get("target_id"),
         "target": annotation.get("target"),
         "text": annotation.get("text"),
+        "trajectory_type": annotation.get("trajectory_type"),
+        "base_view_budget": annotation.get("base_view_budget"),
+        "selected_frame_ids": annotation.get("selected_frame_ids"),
+        "oracle_policy": annotation.get("oracle_policy"),
+        "oracle_view_budget": annotation.get("oracle_view_budget"),
+        "oracle_frame_ids": annotation.get("oracle_frame_ids"),
         "is_hard": bool(annotation.get("is_hard", False)),
         "is_unique": bool(annotation.get("is_unique", False)),
         "is_view_dependent": bool(annotation.get("is_view_dep", False)),
@@ -83,6 +89,7 @@ def build_query_record(
         },
         "top_scores": top_scores.tolist(),
         "top_bboxes_3d": top_boxes.tensor.tolist(),
+        "gt_bboxes_3d": ground_truth_boxes.tensor.tolist(),
     }
     return record
 

@@ -37,6 +37,9 @@ def annotation(query_id="vg.json:7"):
         "is_hard": True,
         "is_unique": False,
         "is_view_dep": True,
+        "trajectory_type": "global_fps",
+        "base_view_budget": 3,
+        "selected_frame_ids": ["frame-0.jpg", "frame-1.jpg", "frame-2.jpg"],
         "gt_bboxes_3d": boxes([[0, 0, 0, 2, 2, 2, 0, 0, 0]]),
     }
 
@@ -63,6 +66,9 @@ class QueryRecordTest(unittest.TestCase):
         self.assertTrue(record["hits"]["0.5"])
         self.assertAlmostEqual(record["top_scores"][0], 0.9)
         self.assertAlmostEqual(record["top_scores"][1], 0.8)
+        self.assertEqual(record["trajectory_type"], "global_fps")
+        self.assertEqual(len(record["selected_frame_ids"]), 3)
+        self.assertEqual(len(record["gt_bboxes_3d"]), 1)
 
     def test_missing_stable_query_id_is_rejected(self):
         value = annotation()
